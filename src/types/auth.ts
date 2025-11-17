@@ -6,7 +6,7 @@ import { Role } from '@/lib/constants'
 export interface Profile {
   id: string
   full_name: string | null
-  role: Role
+  role: Role // Solo 'admin' ahora
   avatar_url: string | null
   created_at: string
 }

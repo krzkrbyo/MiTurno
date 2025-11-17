@@ -3,44 +3,21 @@ import { Layout } from './layout'
 import { PrivateRoute } from '@/features/auth/components/PrivateRoute'
 import { LoginPage } from '@/pages/login'
 import { DashboardPage } from '@/pages/dashboard'
-import { TurnosPage } from '@/pages/turnos'
-import { NuevoTurnoPage } from '@/pages/turnos/nuevo'
+import { ScanPage } from '@/pages/scan'
 import { ScanQRPage } from '@/pages/turnos/scan'
 import { ProfilePage } from '@/pages/profile'
+import { EmpleadosPage } from '@/pages/admin/empleados'
+import { EstadisticasPage } from '@/pages/admin/estadisticas'
 import { ROLES } from '@/lib/constants'
-
-// Páginas de administración (básicas)
-function AdminSucursalesPage() {
-  return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold font-heading mb-2">Sucursales</h1>
-      <p className="text-muted-foreground">Gestión de sucursales (próximamente)</p>
-    </div>
-  )
-}
-
-function AdminServiciosPage() {
-  return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold font-heading mb-2">Servicios</h1>
-      <p className="text-muted-foreground">Gestión de servicios (próximamente)</p>
-    </div>
-  )
-}
-
-function AdminUsuariosPage() {
-  return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold font-heading mb-2">Usuarios</h1>
-      <p className="text-muted-foreground">Gestión de usuarios (próximamente)</p>
-    </div>
-  )
-}
 
 export const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/scan',
+    element: <ScanPage />, // Página pública de escaneo
   },
   {
     path: '/',
@@ -55,17 +32,9 @@ export const router = createBrowserRouter([
         element: <DashboardPage />,
       },
       {
-        path: 'turnos',
-        element: <TurnosPage />,
-      },
-      {
-        path: 'turnos/nuevo',
-        element: <NuevoTurnoPage />,
-      },
-      {
-        path: 'turnos/scan',
+        path: 'scan',
         element: (
-          <PrivateRoute allowedRoles={[ROLES.ADMIN, ROLES.AGENTE]}>
+          <PrivateRoute allowedRoles={[ROLES.ADMIN]}>
             <ScanQRPage />
           </PrivateRoute>
         ),
@@ -75,26 +44,18 @@ export const router = createBrowserRouter([
         element: <ProfilePage />,
       },
       {
-        path: 'admin/sucursales',
+        path: 'admin/empleados',
         element: (
           <PrivateRoute allowedRoles={[ROLES.ADMIN]}>
-            <AdminSucursalesPage />
+            <EmpleadosPage />
           </PrivateRoute>
         ),
       },
       {
-        path: 'admin/servicios',
+        path: 'admin/estadisticas',
         element: (
           <PrivateRoute allowedRoles={[ROLES.ADMIN]}>
-            <AdminServiciosPage />
-          </PrivateRoute>
-        ),
-      },
-      {
-        path: 'admin/usuarios',
-        element: (
-          <PrivateRoute allowedRoles={[ROLES.ADMIN]}>
-            <AdminUsuariosPage />
+            <EstadisticasPage />
           </PrivateRoute>
         ),
       },

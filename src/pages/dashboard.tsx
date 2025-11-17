@@ -1,74 +1,76 @@
-import { useTurnos } from '@/features/turnos/hooks/useTurnos'
-import { useSucursales } from '@/features/turnos/hooks/useSucursales'
+import { useEffect, useState } from 'react'
+import { useRegistrosAsistencia } from '@/features/empleados/hooks/useRegistrosAsistencia'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Users, Clock, CheckCircle, XCircle } from 'lucide-react'
-import { ESTADOS_TURNO } from '@/lib/constants'
+import { Users, Clock, UtensilsCrossed, LogIn } from 'lucide-react'
 import { Loading } from '@/components/Loading'
 import { motion } from 'framer-motion'
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
 
 export function DashboardPage() {
-  const { turnos, loading } = useTurnos()
-  const { sucursales } = useSucursales()
+  const { getEstadisticasDia } = useRegistrosAsistencia()
+  const [estadisticas, setEstadisticas] = useState<{
+    totalRegistros: number
+    empleadosPresentes: number
+    empleadosEnAlmuerzo: number
+    registros: any[]
+  } | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadStats()
+  }, [])
+
+  const loadStats = async () => {
+    setLoading(true)
+    const result = await getEstadisticasDia()
+    if (result.success && result.data) {
+      setEstadisticas(result.data)
+    }
+    setLoading(false)
+  }
 
   if (loading) {
     return <Loading />
   }
 
-  const stats = {
-    total: turnos.length,
-    enCola: turnos.filter((t) => t.estado === ESTADOS_TURNO.EN_COLA).length,
-    atendiendo: turnos.filter((t) => t.estado === ESTADOS_TURNO.ATENDIENDO).length,
-    completados: turnos.filter((t) => t.estado === ESTADOS_TURNO.COMPLETADO).length,
-    cancelados: turnos.filter((t) => t.estado === ESTADOS_TURNO.CANCELADO).length,
-  }
-
   const statsCards = [
     {
-      title: 'Total Turnos',
-      value: stats.total,
+      title: 'Empleados Presentes',
+      value: estadisticas?.empleadosPresentes || 0,
       icon: Users,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100',
-    },
-    {
-      title: 'En Cola',
-      value: stats.enCola,
-      icon: Clock,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-100',
-    },
-    {
-      title: 'Atendiendo',
-      value: stats.atendiendo,
-      icon: Clock,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-100',
-    },
-    {
-      title: 'Completados',
-      value: stats.completados,
-      icon: CheckCircle,
       color: 'text-green-600',
       bgColor: 'bg-green-100',
+      description: 'Actualmente en el trabajo',
     },
     {
-      title: 'Cancelados',
-      value: stats.cancelados,
-      icon: XCircle,
-      color: 'text-red-600',
-      bgColor: 'bg-red-100',
+      title: 'En Almuerzo',
+      value: estadisticas?.empleadosEnAlmuerzo || 0,
+      icon: UtensilsCrossed,
+      color: 'text-yellow-600',
+      bgColor: 'bg-yellow-100',
+      description: 'Fuera por almuerzo',
+    },
+    {
+      title: 'Total Registros Hoy',
+      value: estadisticas?.totalRegistros || 0,
+      icon: Clock,
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-100',
+      description: `Registros del ${format(new Date(), 'dd MMMM', { locale: es })}`,
     },
   ]
+
+  const ultimosRegistros = estadisticas?.registros.slice(0, 5) || []
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold font-heading mb-2">Dashboard</h1>
-        <p className="text-muted-foreground">Resumen de turnos y estadísticas</p>
+        <p className="text-muted-foreground">Resumen de asistencia del día</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {statsCards.map((stat, index) => {
           const Icon = stat.icon
           return (
@@ -87,6 +89,7 @@ export function DashboardPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{stat.value}</div>
+                  <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
                 </CardContent>
               </Card>
             </motion.div>
@@ -96,23 +99,40 @@ export function DashboardPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-heading">Sucursales Activas</CardTitle>
+          <CardTitle className="font-heading">Últimos Registros</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {sucursales.length === 0 ? (
-              <p className="text-muted-foreground">No hay sucursales registradas</p>
-            ) : (
-              sucursales.map((sucursal) => (
-                <Badge key={sucursal.id} variant="secondary">
-                  {sucursal.nombre}
-                </Badge>
-              ))
-            )}
-          </div>
+          {ultimosRegistros.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              No hay registros para hoy
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {ultimosRegistros.map((registro: any) => (
+                <div
+                  key={registro.id}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <LogIn className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">
+                        {registro.empleados?.nombre_completo || 'Empleado desconocido'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {format(new Date(registro.fecha_hora), 'PPpp', { locale: es })}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                    {registro.tipo_evento}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
   )
 }
-

@@ -134,7 +134,5 @@ export function useAuth() {
     setProfile,
     isAuthenticated: !!user && !!profile,
     isAdmin: profile?.role === 'admin',
-    isAgente: profile?.role === 'agente',
-    isCliente: profile?.role === 'cliente',
   }
 }

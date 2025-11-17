@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Calendar, QrCode, Building2, Settings, Users, User } from 'lucide-react'
+import { LayoutDashboard, QrCode, Users, User, BarChart3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { ROLES } from '@/lib/constants'
@@ -11,63 +11,43 @@ interface SidebarProps {
 
 export function Sidebar({ open = false, onClose }: SidebarProps) {
   const location = useLocation()
-  const { isAdmin, isAgente } = useAuth()
+  const { isAdmin } = useAuth()
 
   const menuItems = [
     {
       label: 'Dashboard',
       icon: LayoutDashboard,
       path: '/',
-      roles: [ROLES.ADMIN, ROLES.AGENTE, ROLES.CLIENTE],
-    },
-    {
-      label: 'Turnos',
-      icon: Calendar,
-      path: '/turnos',
-      roles: [ROLES.ADMIN, ROLES.AGENTE, ROLES.CLIENTE],
-    },
-    {
-      label: 'Nuevo Turno',
-      icon: Calendar,
-      path: '/turnos/nuevo',
-      roles: [ROLES.ADMIN, ROLES.AGENTE, ROLES.CLIENTE],
+      roles: [ROLES.ADMIN],
     },
     {
       label: 'Escanear QR',
       icon: QrCode,
-      path: '/turnos/scan',
-      roles: [ROLES.ADMIN, ROLES.AGENTE],
+      path: '/scan',
+      roles: [ROLES.ADMIN],
     },
     {
       label: 'Mi Perfil',
       icon: User,
       path: '/profile',
-      roles: [ROLES.ADMIN, ROLES.AGENTE, ROLES.CLIENTE],
-    },
-    {
-      label: 'Sucursales',
-      icon: Building2,
-      path: '/admin/sucursales',
       roles: [ROLES.ADMIN],
     },
     {
-      label: 'Servicios',
-      icon: Settings,
-      path: '/admin/servicios',
-      roles: [ROLES.ADMIN],
-    },
-    {
-      label: 'Usuarios',
+      label: 'Empleados',
       icon: Users,
-      path: '/admin/usuarios',
+      path: '/admin/empleados',
+      roles: [ROLES.ADMIN],
+    },
+    {
+      label: 'Estadísticas',
+      icon: BarChart3,
+      path: '/admin/estadisticas',
       roles: [ROLES.ADMIN],
     },
   ]
 
   const visibleItems = menuItems.filter((item) => {
     if (item.roles.includes(ROLES.ADMIN) && isAdmin) return true
-    if (item.roles.includes(ROLES.AGENTE) && isAgente) return true
-    if (item.roles.includes(ROLES.CLIENTE)) return true
     return false
   })
 

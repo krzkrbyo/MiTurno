@@ -1,14 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
 import { Html5QrcodeScanner } from 'html5-qrcode'
 import { motion } from 'framer-motion'
-import { CheckCircle, XCircle, AlertCircle } from 'lucide-react'
+import { CheckCircle, XCircle, AlertCircle, LogIn, LogOut, UtensilsCrossed } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { validateQRPayload } from '@/lib/qr'
-import { useTurnos } from '@/features/turnos/hooks/useTurnos'
+import { useEmpleados } from '@/features/empleados/hooks/useEmpleados'
+import { useRegistrosAsistencia } from '@/features/empleados/hooks/useRegistrosAsistencia'
 import { Loading } from './Loading'
-import { TurnoCard } from './TurnoCard'
-import type { Turno } from '@/types/turno'
+import { TIPOS_EVENTO, TIPOS_EVENTO_LABELS } from '@/lib/constants'
+import { toast } from 'sonner'
+import type { Database } from '@/types/db'
+
+type Empleado = Database['public']['Tables']['empleados']['Row']
 
 export function ScanQR() {
   const [scanning, setScanning] = useState(true)
@@ -17,10 +21,14 @@ export function ScanQR() {
     valid: boolean
     expired: boolean
     error?: string
+    empleadoId?: string
   } | null>(null)
-  const [turno, setTurno] = useState<Turno | null>(null)
+  const [empleado, setEmpleado] = useState<Empleado | null>(null)
+  const [loadingEmpleado, setLoadingEmpleado] = useState(false)
+  const [registrando, setRegistrando] = useState(false)
   const scannerRef = useRef<Html5QrcodeScanner | null>(null)
-  const { getTurnoById, updateTurnoEstado } = useTurnos()
+  const { getEmpleadoByQR, getEmpleadoById } = useEmpleados()
+  const { createRegistro } = useRegistrosAsistencia()
 
   useEffect(() => {
     if (scanning) {
@@ -45,18 +53,29 @@ export function ScanQR() {
 
               setValidationResult(validation)
 
-              if (validation.valid) {
-                const { data } = await getTurnoById(payload.turno_id)
-                if (data) {
-                  setTurno(data)
+              if (validation.valid && validation.empleadoId) {
+                setLoadingEmpleado(true)
+                // Buscar empleado por ID
+                const { data: empleadoData } = await getEmpleadoById(validation.empleadoId)
+                if (empleadoData) {
+                  setEmpleado(empleadoData)
+                } else {
+                  setValidationResult({
+                    ...validation,
+                    valid: false,
+                    error: 'Empleado no encontrado',
+                  })
                 }
+                setLoadingEmpleado(false)
               }
             } catch (error) {
+              // Si no es JSON válido, mostrar error
               setValidationResult({
                 valid: false,
                 expired: false,
-                error: 'QR inválido o formato incorrecto',
+                error: 'QR inválido. El código debe ser un QR generado por el sistema.',
               })
+              setLoadingEmpleado(false)
             }
 
             scanner.clear()
@@ -77,26 +96,42 @@ export function ScanQR() {
         scannerRef.current = null
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanning])
 
   function handleReset() {
     setScanning(true)
     setScannedData(null)
     setValidationResult(null)
-    setTurno(null)
+    setEmpleado(null)
+    setLoadingEmpleado(false)
   }
 
-  async function handleAtender() {
-    if (turno) {
-      await updateTurnoEstado(turno.id, 'atendiendo')
-      setTurno({ ...turno, estado: 'atendiendo' })
-    }
-  }
+  async function handleRegistrarEvento(tipoEvento: typeof TIPOS_EVENTO[keyof typeof TIPOS_EVENTO]) {
+    if (!empleado) return
 
-  async function handleCompletar() {
-    if (turno) {
-      await updateTurnoEstado(turno.id, 'completado')
-      setTurno({ ...turno, estado: 'completado' })
+    setRegistrando(true)
+    try {
+      const result = await createRegistro({
+        empleado_id: empleado.id,
+        tipo_evento: tipoEvento,
+        fecha_hora: new Date().toISOString(),
+      })
+
+      if (result.success) {
+        toast.success(`${TIPOS_EVENTO_LABELS[tipoEvento]} registrada correctamente`)
+        // Resetear después de 1.5 segundos para permitir otro escaneo
+        setTimeout(() => {
+          handleReset()
+        }, 1500)
+      } else {
+        toast.error(result.error || 'Error al registrar el evento')
+      }
+    } catch (error: any) {
+      console.error('Error in handleRegistrarEvento:', error)
+      toast.error(error.message || 'Error al registrar evento')
+    } finally {
+      setRegistrando(false)
     }
   }
 
@@ -104,8 +139,8 @@ export function ScanQR() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="font-heading">Escanear QR</CardTitle>
-          <CardDescription>Escanea el código QR de un turno para validarlo</CardDescription>
+          <CardTitle className="font-heading">Escanear QR de Empleado</CardTitle>
+          <CardDescription>Escanea el código QR del empleado para registrar asistencia</CardDescription>
         </CardHeader>
         <CardContent>
           {scanning ? (
@@ -115,56 +150,108 @@ export function ScanQR() {
                 <div className="absolute inset-0 border-4 border-primary rounded-lg pointer-events-none z-10" />
               </div>
               <p className="text-sm text-center text-muted-foreground">
-                Apunta la cámara al código QR del turno
+                Apunta la cámara al código QR del empleado
               </p>
             </div>
           ) : (
             <div className="space-y-4">
-              {validationResult && (
+              {loadingEmpleado ? (
+                <Loading />
+              ) : validationResult && !validationResult.valid ? (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="flex items-center justify-center gap-2 p-4 rounded-lg"
+                  className="flex items-center justify-center gap-2 p-4 rounded-lg bg-red-50"
                 >
-                  {validationResult.valid ? (
-                    <>
-                      <CheckCircle className="h-6 w-6 text-success" />
-                      <span className="font-medium text-success">QR Válido</span>
-                    </>
+                  {validationResult.expired ? (
+                    <XCircle className="h-6 w-6 text-red-500" />
                   ) : (
-                    <>
-                      {validationResult.expired ? (
-                        <XCircle className="h-6 w-6 text-red-500" />
-                      ) : (
-                        <AlertCircle className="h-6 w-6 text-yellow-500" />
-                      )}
-                      <span className="font-medium text-red-500">
-                        {validationResult.error || 'QR Inválido'}
-                      </span>
-                    </>
+                    <AlertCircle className="h-6 w-6 text-yellow-500" />
                   )}
+                  <span className="font-medium text-red-500">
+                    {validationResult.error || 'QR Inválido'}
+                  </span>
                 </motion.div>
-              )}
+              ) : empleado ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6"
+                >
+                  <div className="flex flex-col items-center space-y-4">
+                    {empleado.foto_url ? (
+                      <img
+                        src={empleado.foto_url}
+                        alt={empleado.nombre_completo}
+                        className="w-32 h-32 rounded-full object-cover border-4 border-primary"
+                      />
+                    ) : (
+                      <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center border-4 border-primary">
+                        <span className="text-4xl font-bold text-muted-foreground">
+                          {empleado.nombre_completo.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <div className="text-center">
+                      <h3 className="text-2xl font-bold font-heading">{empleado.nombre_completo}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">Selecciona el tipo de registro</p>
+                    </div>
+                  </div>
 
-              {scannedData && (
-                <div className="p-4 bg-muted rounded-lg">
-                  <p className="text-xs font-mono break-all">{scannedData}</p>
-                </div>
-              )}
+                  <div className="grid grid-cols-1 gap-3">
+                    <Button
+                      onClick={() => handleRegistrarEvento(TIPOS_EVENTO.ENTRADA)}
+                      disabled={registrando}
+                      className="w-full h-16 text-lg bg-green-600 hover:bg-green-700"
+                      size="lg"
+                    >
+                      <LogIn className="mr-2 h-5 w-5" />
+                      {TIPOS_EVENTO_LABELS[TIPOS_EVENTO.ENTRADA]}
+                    </Button>
 
-              <Button onClick={handleReset} variant="outline" className="w-full">
-                Escanear otro QR
+                    <Button
+                      onClick={() => handleRegistrarEvento(TIPOS_EVENTO.SALIDA_ALMUERZO)}
+                      disabled={registrando}
+                      variant="outline"
+                      className="w-full h-16 text-lg border-yellow-500 text-yellow-700 hover:bg-yellow-50"
+                      size="lg"
+                    >
+                      <UtensilsCrossed className="mr-2 h-5 w-5" />
+                      {TIPOS_EVENTO_LABELS[TIPOS_EVENTO.SALIDA_ALMUERZO]}
+                    </Button>
+
+                    <Button
+                      onClick={() => handleRegistrarEvento(TIPOS_EVENTO.ENTRADA_ALMUERZO)}
+                      disabled={registrando}
+                      variant="outline"
+                      className="w-full h-16 text-lg border-blue-500 text-blue-700 hover:bg-blue-50"
+                      size="lg"
+                    >
+                      <UtensilsCrossed className="mr-2 h-5 w-5" />
+                      {TIPOS_EVENTO_LABELS[TIPOS_EVENTO.ENTRADA_ALMUERZO]}
+                    </Button>
+
+                    <Button
+                      onClick={() => handleRegistrarEvento(TIPOS_EVENTO.SALIDA)}
+                      disabled={registrando}
+                      variant="destructive"
+                      className="w-full h-16 text-lg"
+                      size="lg"
+                    >
+                      <LogOut className="mr-2 h-5 w-5" />
+                      {TIPOS_EVENTO_LABELS[TIPOS_EVENTO.SALIDA]}
+                    </Button>
+                  </div>
+                </motion.div>
+              ) : null}
+
+              <Button onClick={handleReset} variant="outline" className="w-full" disabled={registrando}>
+                {registrando ? 'Registrando...' : 'Escanear otro QR'}
               </Button>
             </div>
           )}
         </CardContent>
       </Card>
-
-      {turno && validationResult?.valid && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <TurnoCard turno={turno} onAtender={handleAtender} onCompletar={handleCompletar} />
-        </motion.div>
-      )}
     </div>
   )
 }

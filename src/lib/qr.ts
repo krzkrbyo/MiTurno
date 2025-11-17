@@ -1,11 +1,12 @@
 import CryptoJS from 'crypto-js'
+import { QR_EXPIRATION_SECONDS } from './constants'
 
 /**
- * Genera una firma HMAC-SHA256 para el QR del turno
+ * Genera una firma HMAC-SHA256 para el QR del empleado
  */
-export function generateQRSignature(turnoId: string, expTimestamp: number): string {
+export function generateQRSignature(empleadoId: string, expTimestamp: number): string {
   const secret = import.meta.env.VITE_QR_SIGN_SECRET || 'default-secret-change-in-production'
-  const payload = `${turnoId}|${expTimestamp}`
+  const payload = `${empleadoId}|${expTimestamp}`
   return CryptoJS.HmacSHA256(payload, secret).toString()
 }
 
@@ -13,27 +14,27 @@ export function generateQRSignature(turnoId: string, expTimestamp: number): stri
  * Valida la firma HMAC del QR
  */
 export function validateQRSignature(
-  turnoId: string,
+  empleadoId: string,
   expTimestamp: number,
   signature: string
 ): boolean {
-  const expectedSignature = generateQRSignature(turnoId, expTimestamp)
+  const expectedSignature = generateQRSignature(empleadoId, expTimestamp)
   return expectedSignature === signature
 }
 
 /**
- * Genera el payload del QR con firma y expiración
+ * Genera el payload del QR con firma y expiración para empleados
  */
-export function generateQRPayload(turnoId: string): {
-  turno_id: string
+export function generateQRPayload(empleadoId: string): {
+  empleado_id: string
   exp_ts: number
   firma: string
 } {
-  const expTimestamp = Math.floor(Date.now() / 1000) + 24 * 60 * 60 // 24 horas
-  const firma = generateQRSignature(turnoId, expTimestamp)
+  const expTimestamp = Math.floor(Date.now() / 1000) + QR_EXPIRATION_SECONDS
+  const firma = generateQRSignature(empleadoId, expTimestamp)
 
   return {
-    turno_id: turnoId,
+    empleado_id: empleadoId,
     exp_ts: expTimestamp,
     firma,
   }
@@ -48,14 +49,17 @@ export function isQRExpired(expTimestamp: number): boolean {
 }
 
 /**
- * Valida el payload completo del QR
+ * Valida el payload completo del QR de empleado
  */
 export function validateQRPayload(payload: {
-  turno_id: string
+  empleado_id?: string
+  turno_id?: string // Mantener compatibilidad temporal
   exp_ts: number
   firma: string
-}): { valid: boolean; expired: boolean; error?: string } {
-  if (!payload.turno_id || !payload.exp_ts || !payload.firma) {
+}): { valid: boolean; expired: boolean; empleadoId?: string; error?: string } {
+  const empleadoId = payload.empleado_id || payload.turno_id // Compatibilidad temporal
+  
+  if (!empleadoId || !payload.exp_ts || !payload.firma) {
     return {
       valid: false,
       expired: false,
@@ -72,7 +76,7 @@ export function validateQRPayload(payload: {
     }
   }
 
-  const signatureValid = validateQRSignature(payload.turno_id, payload.exp_ts, payload.firma)
+  const signatureValid = validateQRSignature(empleadoId, payload.exp_ts, payload.firma)
   if (!signatureValid) {
     return {
       valid: false,
@@ -84,6 +88,7 @@ export function validateQRPayload(payload: {
   return {
     valid: true,
     expired: false,
+    empleadoId,
   }
 }
 
