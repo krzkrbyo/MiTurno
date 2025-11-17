@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS empleados (
   codigo_qr TEXT NOT NULL UNIQUE,
   nombre_completo TEXT NOT NULL,
   foto_url TEXT,
+  pin TEXT UNIQUE,
   activo BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   created_by UUID NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT
@@ -34,6 +35,7 @@ CREATE TABLE IF NOT EXISTS empleados (
 
 -- Índices
 CREATE INDEX IF NOT EXISTS idx_empleados_codigo_qr ON empleados(codigo_qr);
+CREATE INDEX IF NOT EXISTS idx_empleados_pin ON empleados(pin);
 CREATE INDEX IF NOT EXISTS idx_empleados_activo ON empleados(activo);
 CREATE INDEX IF NOT EXISTS idx_empleados_created_by ON empleados(created_by);
 

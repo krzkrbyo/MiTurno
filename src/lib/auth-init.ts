@@ -2,6 +2,9 @@ import { supabase } from './supabase'
 import { useAuthStore } from './store'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 import type { User, Profile } from '@/types/auth'
+import type { Database } from '@/types/db'
+
+type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
 
 let initialized = false
 let authSubscription: any = null
@@ -31,13 +34,15 @@ async function loadUserProfile(supabaseUser: SupabaseUser): Promise<boolean> {
       console.log('loadUserProfile: Attempting to create default profile...')
       
       // Si no existe perfil, crear uno por defecto
+      const profileData: ProfileInsert = {
+        id: supabaseUser.id,
+        full_name: supabaseUser.email?.split('@')[0] || null,
+        role: 'admin',
+      }
+      
       const { data: newProfile, error: createError } = await supabase
         .from('profiles')
-        .insert({
-          id: supabaseUser.id,
-          full_name: supabaseUser.email?.split('@')[0] || null,
-          role: 'cliente',
-        })
+        .insert(profileData as any)
         .select()
         .single()
 
@@ -90,46 +95,104 @@ async function loadUserProfile(supabaseUser: SupabaseUser): Promise<boolean> {
 
 export function initializeAuth() {
   if (initialized) {
+    console.log('initializeAuth: Already initialized, skipping...')
     return
   }
   initialized = true
 
-  // NO establecer loading aquí - dejar que cada componente maneje su propio loading
+  console.log('initializeAuth: Starting initialization...')
+  const { setLoading, setInitialized, user, profile } = useAuthStore.getState()
+  
+  // Verificar sesión inicial
+  const checkSession = async () => {
+    try {
+      console.log('initializeAuth: Checking Supabase session...')
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (error) {
+        console.error('initializeAuth: Error getting session:', error)
+        useAuthStore.getState().setUser(null)
+        useAuthStore.getState().setProfile(null)
+        setLoading(false)
+        setInitialized(true)
+        return
+      }
 
-  // Verificar sesión inicial de forma asíncrona
-  setTimeout(() => {
-    supabase.auth.getSession()
-      .then(({ data: { session }, error }) => {
-        if (error) {
-          console.error('Error getting session:', error)
-          return
-        }
-
-        if (session?.user) {
-          const { setLoading } = useAuthStore.getState()
+      if (session?.user) {
+        console.log('initializeAuth: Session found, user ID:', session.user.id)
+        
+        // Verificar si necesitamos recargar el perfil
+        const currentState = useAuthStore.getState()
+        const needsReload = !currentState.user || 
+                           !currentState.profile || 
+                           currentState.user.id !== session.user.id
+        
+        if (needsReload) {
+          console.log('initializeAuth: Loading profile...')
           setLoading(true)
-          loadUserProfile(session.user).finally(() => {
-            setLoading(false)
-          })
+          const loaded = await loadUserProfile(session.user)
+          setLoading(false)
+          
+          if (!loaded) {
+            console.error('initializeAuth: Failed to load profile')
+            useAuthStore.getState().setUser(null)
+            useAuthStore.getState().setProfile(null)
+          }
+        } else {
+          console.log('initializeAuth: User and profile already loaded, skipping reload')
         }
-      })
-      .catch((error) => {
-        console.error('Error in getSession promise:', error)
-      })
-  }, 100) // Pequeño delay para no bloquear el render inicial
+      } else {
+        console.log('initializeAuth: No session found')
+        // Limpiar datos obsoletos
+        if (user || profile) {
+          console.log('initializeAuth: Clearing stale data')
+          useAuthStore.getState().setUser(null)
+          useAuthStore.getState().setProfile(null)
+        }
+      }
+      
+      setLoading(false)
+      setInitialized(true)
+    } catch (error) {
+      console.error('initializeAuth: Exception in checkSession:', error)
+      setLoading(false)
+      setInitialized(true)
+    }
+  }
+
+  // Ejecutar verificación de sesión
+  checkSession()
 
   // Escuchar cambios de autenticación solo una vez
   if (!authSubscription) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const { setLoading, setUser, setProfile } = useAuthStore.getState()
+      console.log('Auth state changed:', event, session?.user?.id)
+      const { setLoading, setUser, setProfile, user: currentUser } = useAuthStore.getState()
       
-      if (session?.user) {
-        setLoading(true)
-        await loadUserProfile(session.user)
-        setLoading(false)
-      } else {
+      // Solo procesar eventos relevantes
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (session?.user) {
+          // Solo recargar si el usuario cambió o no hay perfil
+          const needsReload = !currentUser || currentUser.id !== session.user.id
+          
+          if (needsReload) {
+            console.log('Auth state change: Loading profile for new user')
+            setLoading(true)
+            const loaded = await loadUserProfile(session.user)
+            setLoading(false)
+            
+            if (!loaded) {
+              setUser(null)
+              setProfile(null)
+            }
+          } else {
+            console.log('Auth state change: User already loaded, skipping reload')
+          }
+        }
+      } else if (event === 'SIGNED_OUT') {
+        console.log('Auth state change: User signed out')
         setUser(null)
         setProfile(null)
         setLoading(false)

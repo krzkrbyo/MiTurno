@@ -15,20 +15,11 @@ interface PrivateRouteProps {
  */
 export function PrivateRoute({ children, allowedRoles }: PrivateRouteProps) {
   const { isAuthenticated, profile } = useAuth()
-  const { loading } = useAuthStore()
+  const { loading, initialized } = useAuthStore()
   const location = useLocation()
-  const [initialCheck, setInitialCheck] = useState(true)
 
-  // Esperar un momento para que la inicialización termine
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setInitialCheck(false)
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [])
-
-  // Mostrar loading solo durante la verificación inicial
-  if (initialCheck && loading) {
+  // Mostrar loading mientras se inicializa o carga
+  if (loading || !initialized) {
     return <Loading />
   }
 

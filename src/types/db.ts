@@ -36,6 +36,7 @@ export interface Database {
           codigo_qr: string
           nombre_completo: string
           foto_url: string | null
+          pin: string | null
           activo: boolean
           created_at: string
           created_by: string
@@ -45,6 +46,7 @@ export interface Database {
           codigo_qr: string
           nombre_completo: string
           foto_url?: string | null
+          pin?: string | null
           activo?: boolean
           created_at?: string
           created_by: string
@@ -54,6 +56,7 @@ export interface Database {
           codigo_qr?: string
           nombre_completo?: string
           foto_url?: string | null
+          pin?: string | null
           activo?: boolean
           created_at?: string
           created_by?: string

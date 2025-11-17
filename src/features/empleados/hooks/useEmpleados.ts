@@ -62,17 +62,44 @@ export function useEmpleados() {
     }
   }, [])
 
+  // Generar PIN único
+  const generateUniquePIN = async (): Promise<string> => {
+    let pin: string
+    let exists = true
+    
+    while (exists) {
+      // Generar PIN de 4 dígitos (0000-9999)
+      pin = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
+      
+      // Verificar si el PIN ya existe
+      const { data, error } = await supabase
+        .from('empleados')
+        .select('id')
+        .eq('pin', pin)
+        .maybeSingle()
+      
+      // Si hay error o no hay datos, el PIN está disponible
+      exists = !error && !!data
+    }
+    
+    return pin!
+  }
+
   // Crear empleado
-  const createEmpleado = async (empleado: Omit<EmpleadoInsert, 'id' | 'created_at' | 'codigo_qr'> & { codigo_qr?: string }) => {
+  const createEmpleado = async (empleado: Omit<EmpleadoInsert, 'id' | 'created_at' | 'codigo_qr' | 'pin'> & { codigo_qr?: string; pin?: string }) => {
     try {
       // Generar código QR único si no se proporciona
       const codigo_qr = empleado.codigo_qr || `EMP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      
+      // Generar PIN único si no se proporciona
+      const pin = empleado.pin || await generateUniquePIN()
       
       const { data, error: createError } = await supabase
         .from('empleados')
         .insert({
           ...empleado,
           codigo_qr,
+          pin,
         })
         .select()
         .single()
@@ -169,6 +196,25 @@ export function useEmpleados() {
     }
   }
 
+  // Obtener empleado por PIN
+  const getEmpleadoByPIN = async (pin: string) => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('empleados')
+        .select('*')
+        .eq('pin', pin)
+        .eq('activo', true)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      return { success: true, data }
+    } catch (err: any) {
+      console.error('Error fetching empleado by PIN:', err)
+      return { success: false, error: err.message, data: null }
+    }
+  }
+
   return {
     empleados,
     loading,
@@ -179,6 +225,7 @@ export function useEmpleados() {
     deleteEmpleado,
     getEmpleadoByQR,
     getEmpleadoById,
+    getEmpleadoByPIN,
   }
 }
 

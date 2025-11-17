@@ -55,9 +55,11 @@ export function LoginPage() {
   // Redirigir si ya está autenticado
   useEffect(() => {
     if (isAuthenticated) {
+      console.log('LoginPage: User is authenticated, redirecting...')
+      setIsSubmitting(false) // Resetear el estado de submitting cuando se autentica
       const timer = setTimeout(() => {
         navigate(from, { replace: true })
-      }, 100)
+      }, 200)
       return () => clearTimeout(timer)
     }
   }, [isAuthenticated, navigate, from])
@@ -67,23 +69,32 @@ export function LoginPage() {
     setSuccess(null)
     setIsSubmitting(true)
     
+    // Timeout de seguridad para evitar que se quede bloqueado
+    const safetyTimeout = setTimeout(() => {
+      console.warn('LoginPage: Safety timeout triggered, resetting submitting state')
+      setIsSubmitting(false)
+    }, 10000) // 10 segundos máximo
+    
     try {
       console.log('LoginPage: Starting sign in...')
       const result = await signIn(data.email, data.password)
       console.log('LoginPage: Sign in result:', result)
       
+      clearTimeout(safetyTimeout)
+      
       if (result.success) {
-        setSuccess('Redirigiendo...')
-        // La navegación se manejará en el useEffect cuando isAuthenticated cambie
+        setSuccess('Sesión iniciada correctamente. Redirigiendo...')
+        // El useEffect detectará el cambio en isAuthenticated y redirigirá
+        // También reseteará isSubmitting cuando se detecte la autenticación
       } else {
         console.error('LoginPage: Sign in failed:', result.error)
         setError(result.error || 'Error al iniciar sesión')
+        setIsSubmitting(false)
       }
     } catch (err: any) {
       console.error('LoginPage: Sign in exception:', err)
+      clearTimeout(safetyTimeout)
       setError(err.message || 'Error al iniciar sesión')
-    } finally {
-      console.log('LoginPage: Resetting isSubmitting to false')
       setIsSubmitting(false)
     }
   }

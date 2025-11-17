@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Edit, Trash2, QrCode, User } from 'lucide-react'
+import { Plus, Edit, Trash2, QrCode, User, Printer } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -94,8 +94,9 @@ export function EmpleadosPage() {
           created_by: user.id,
         })
 
-        if (result.success && result.data) {
-          const empleadoId = result.data.id
+        if (result.success) {
+          const empleadoData = (result as { success: true; data: Empleado }).data
+          const empleadoId = empleadoData.id
           setNewEmpleadoId(empleadoId)
 
           // Subir foto si existe
@@ -240,6 +241,12 @@ export function EmpleadosPage() {
                     <User className="h-16 w-16 text-muted-foreground" />
                   </div>
                 )}
+                {empleado.pin && (
+                  <div className="text-center p-2 bg-muted rounded-lg">
+                    <p className="text-xs text-muted-foreground">PIN</p>
+                    <p className="text-lg font-bold font-mono">{empleado.pin}</p>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <span className={`text-sm ${empleado.activo ? 'text-green-600' : 'text-red-600'}`}>
                     {empleado.activo ? 'Activo' : 'Inactivo'}
@@ -259,15 +266,82 @@ export function EmpleadosPage() {
                       Ver QR
                     </Button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                      <DialogTitle>QR de {empleado.nombre_completo}</DialogTitle>
+                      <DialogTitle>Badge de Identificación - {empleado.nombre_completo}</DialogTitle>
                     </DialogHeader>
-                    <div className="flex flex-col items-center space-y-4">
-                      <QRCodeSVG value={JSON.stringify(generateQRPayload(empleado.id))} size={256} />
-                      <p className="text-sm text-muted-foreground text-center">
-                        Código QR único para {empleado.nombre_completo}
-                      </p>
+                    <div className="space-y-4">
+                      {/* Vista previa del badge */}
+                      <div id={`badge-${empleado.id}`} className="badge-print bg-white border-2 border-gray-300 rounded-xl p-8 mx-auto max-w-sm shadow-lg">
+                        <div className="flex flex-col items-center space-y-5">
+                          {/* Foto circular */}
+                          {empleado.foto_url ? (
+                            <img
+                              src={empleado.foto_url}
+                              alt={empleado.nombre_completo}
+                              className="w-36 h-36 rounded-full object-cover border-4 border-primary shadow-md"
+                            />
+                          ) : (
+                            <div className="w-36 h-36 rounded-full bg-primary/10 flex items-center justify-center border-4 border-primary shadow-md">
+                              <span className="text-6xl font-bold text-primary">
+                                {empleado.nombre_completo.charAt(0).toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                          
+                          {/* Nombre completo */}
+                          <div className="text-center w-full">
+                            <h3 className="text-2xl font-bold font-heading text-gray-900 leading-tight">
+                              {empleado.nombre_completo}
+                            </h3>
+                            {empleado.pin && (
+                              <p className="text-sm text-muted-foreground mt-2 font-mono">PIN: {empleado.pin}</p>
+                            )}
+                          </div>
+                          
+                          {/* Código QR */}
+                          <div className="flex flex-col items-center space-y-2 pt-2">
+                            <div className="bg-white p-3 rounded-lg border-2 border-gray-200">
+                              <QRCodeSVG 
+                                value={JSON.stringify(generateQRPayload(empleado.id))} 
+                                size={180}
+                                level="M"
+                              />
+                            </div>
+                            <p className="text-xs text-muted-foreground text-center font-medium">
+                              Código de Identificación
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Botones de acción */}
+                      <div className="flex gap-2 justify-center print:hidden">
+                        <Button
+                          onClick={() => {
+                            const badgeElement = document.getElementById(`badge-${empleado.id}`)
+                            if (badgeElement) {
+                              // Ocultar todos los badges excepto el que se va a imprimir
+                              document.querySelectorAll('.badge-print').forEach((el) => {
+                                if (el.id !== `badge-${empleado.id}`) {
+                                  el.classList.add('hidden')
+                                }
+                              })
+                              setTimeout(() => {
+                                window.print()
+                                // Restaurar visibilidad después de imprimir
+                                document.querySelectorAll('.badge-print').forEach((el) => {
+                                  el.classList.remove('hidden')
+                                })
+                              }, 100)
+                            }
+                          }}
+                          className="flex items-center gap-2"
+                        >
+                          <Printer className="h-4 w-4" />
+                          Imprimir Badge
+                        </Button>
+                      </div>
                     </div>
                   </DialogContent>
                 </Dialog>
@@ -292,32 +366,134 @@ export function EmpleadosPage() {
 
       {/* Diálogo para mostrar QR después de crear empleado */}
       <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>QR Generado</DialogTitle>
+            <DialogTitle>Badge de Identificación Generado</DialogTitle>
           </DialogHeader>
-          {qrPreview && newEmpleadoId && (
-            <div className="flex flex-col items-center space-y-4">
-              <QRCodeSVG value={qrPreview} size={256} />
-              <p className="text-sm text-muted-foreground text-center">
-                Guarda este QR para el empleado. Puedes imprimirlo o descargarlo.
-              </p>
-              <Button
-                onClick={() => {
-                  setQrDialogOpen(false)
-                  setIsDialogOpen(false) // Cerrar también el diálogo de creación
-                  setQrPreview(null)
-                  setNewEmpleadoId(null)
-                  setEditingEmpleado(null)
-                }}
-                className="w-full"
-              >
-                Cerrar
-              </Button>
-            </div>
-          )}
+          {qrPreview && newEmpleadoId && (() => {
+            const nuevoEmpleado = empleados.find(e => e.id === newEmpleadoId)
+            if (!nuevoEmpleado) return null
+            
+            return (
+              <div className="space-y-4">
+                {/* Vista previa del badge */}
+                <div id={`badge-new-${newEmpleadoId}`} className="badge-print bg-white border-2 border-gray-300 rounded-xl p-8 mx-auto max-w-sm shadow-lg">
+                  <div className="flex flex-col items-center space-y-5">
+                    {/* Foto circular */}
+                    {nuevoEmpleado.foto_url ? (
+                      <img
+                        src={nuevoEmpleado.foto_url}
+                        alt={nuevoEmpleado.nombre_completo}
+                        className="w-36 h-36 rounded-full object-cover border-4 border-primary shadow-md"
+                      />
+                    ) : (
+                      <div className="w-36 h-36 rounded-full bg-primary/10 flex items-center justify-center border-4 border-primary shadow-md">
+                        <span className="text-6xl font-bold text-primary">
+                          {nuevoEmpleado.nombre_completo.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    
+                    {/* Nombre completo */}
+                    <div className="text-center w-full">
+                      <h3 className="text-2xl font-bold font-heading text-gray-900 leading-tight">
+                        {nuevoEmpleado.nombre_completo}
+                      </h3>
+                      {nuevoEmpleado.pin && (
+                        <p className="text-sm text-muted-foreground mt-2 font-mono">PIN: {nuevoEmpleado.pin}</p>
+                      )}
+                    </div>
+                    
+                    {/* Código QR */}
+                    <div className="flex flex-col items-center space-y-2 pt-2">
+                      <div className="bg-white p-3 rounded-lg border-2 border-gray-200">
+                        <QRCodeSVG 
+                          value={qrPreview} 
+                          size={180}
+                          level="M"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground text-center font-medium">
+                        Código de Identificación
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Botones de acción */}
+                <div className="flex gap-2 justify-center print:hidden">
+                  <Button
+                    onClick={() => {
+                      const badgeElement = document.getElementById(`badge-new-${newEmpleadoId}`)
+                      if (badgeElement) {
+                        // Ocultar todos los badges excepto el que se va a imprimir
+                        document.querySelectorAll('.badge-print').forEach((el) => {
+                          if (el.id !== `badge-new-${newEmpleadoId}`) {
+                            el.classList.add('hidden')
+                          }
+                        })
+                        setTimeout(() => {
+                          window.print()
+                          // Restaurar visibilidad después de imprimir
+                          document.querySelectorAll('.badge-print').forEach((el) => {
+                            el.classList.remove('hidden')
+                          })
+                        }, 100)
+                      }
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <Printer className="h-4 w-4" />
+                    Imprimir Badge
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setQrDialogOpen(false)
+                      setIsDialogOpen(false) // Cerrar también el diálogo de creación
+                      setQrPreview(null)
+                      setNewEmpleadoId(null)
+                      setEditingEmpleado(null)
+                    }}
+                  >
+                    Cerrar
+                  </Button>
+                </div>
+              </div>
+            )
+          })()}
         </DialogContent>
       </Dialog>
+      
+      {/* Estilos para impresión */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .badge-print:not(.hidden),
+          .badge-print:not(.hidden) * {
+            visibility: visible;
+          }
+          .badge-print:not(.hidden) {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 85.6mm; /* Tamaño estándar de tarjeta de identificación */
+            max-width: 85.6mm;
+            page-break-after: always;
+            page-break-inside: avoid;
+          }
+          @page {
+            size: A4;
+            margin: 0;
+          }
+          .print\\:hidden {
+            display: none !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }

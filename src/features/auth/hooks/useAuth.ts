@@ -14,42 +14,51 @@ export function useAuth() {
   async function signIn(email: string, password: string) {
     try {
       setLoading(true)
+      console.log('SignIn: Starting authentication...')
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (error) {
-        console.error('Sign in error:', error)
+        console.error('SignIn: Authentication error:', error)
+        setLoading(false)
         throw error
       }
 
       if (!data.user) {
-        console.error('No user returned from sign in')
+        console.error('SignIn: No user returned')
+        setLoading(false)
         return { success: false, error: 'Error desconocido: no se recibió usuario' }
       }
 
+      console.log('SignIn: User authenticated, loading profile...')
+      
       // Esperar a que el perfil se cargue completamente
-      console.log('Loading user profile for:', data.user.id)
       const profileLoaded = await loadUserProfile(data.user)
       
+      setLoading(false)
+      
       if (profileLoaded) {
-        console.log('Profile loaded successfully')
+        console.log('SignIn: Profile loaded successfully')
         toast.success('Sesión iniciada correctamente')
+        
+        // Pequeño delay para asegurar que el estado se propaga
+        await new Promise(resolve => setTimeout(resolve, 100))
+        
         return { success: true }
       } else {
-        console.error('Failed to load profile')
+        console.error('SignIn: Failed to load profile')
         toast.error('Error al cargar el perfil')
         return { success: false, error: 'Error al cargar el perfil' }
       }
     } catch (error: any) {
-      console.error('Sign in exception:', error)
+      console.error('SignIn: Exception:', error)
+      setLoading(false)
       const errorMessage = error.message || 'Error al iniciar sesión'
       toast.error(errorMessage)
       return { success: false, error: errorMessage }
-    } finally {
-      console.log('Sign in finally: setting loading to false')
-      setLoading(false)
     }
   }
 

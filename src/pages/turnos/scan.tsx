@@ -5,7 +5,7 @@ export function ScanQRPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold font-heading mb-2">Registro de Asistencia</h1>
-        <p className="text-muted-foreground">Escanea el código QR del empleado para registrar entrada, salida o almuerzo</p>
+        <p className="text-muted-foreground">Ingresa el PIN de 4 dígitos o escanea el código QR del empleado</p>
       </div>
       <ScanQR />
     </div>

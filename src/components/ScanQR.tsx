@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
-import { Html5QrcodeScanner } from 'html5-qrcode'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { CheckCircle, XCircle, AlertCircle, LogIn, LogOut, UtensilsCrossed } from 'lucide-react'
+import { CheckCircle, XCircle, AlertCircle, LogIn, LogOut, UtensilsCrossed, Search } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { validateQRPayload } from '@/lib/qr'
 import { useEmpleados } from '@/features/empleados/hooks/useEmpleados'
 import { useRegistrosAsistencia } from '@/features/empleados/hooks/useRegistrosAsistencia'
@@ -15,95 +15,76 @@ import type { Database } from '@/types/db'
 type Empleado = Database['public']['Tables']['empleados']['Row']
 
 export function ScanQR() {
-  const [scanning, setScanning] = useState(true)
-  const [scannedData, setScannedData] = useState<string | null>(null)
-  const [validationResult, setValidationResult] = useState<{
-    valid: boolean
-    expired: boolean
-    error?: string
-    empleadoId?: string
-  } | null>(null)
+  const [codigoInput, setCodigoInput] = useState('')
   const [empleado, setEmpleado] = useState<Empleado | null>(null)
   const [loadingEmpleado, setLoadingEmpleado] = useState(false)
   const [registrando, setRegistrando] = useState(false)
-  const scannerRef = useRef<Html5QrcodeScanner | null>(null)
-  const { getEmpleadoByQR, getEmpleadoById } = useEmpleados()
+  const [error, setError] = useState<string | null>(null)
+  const { getEmpleadoByQR, getEmpleadoById, getEmpleadoByPIN } = useEmpleados()
   const { createRegistro } = useRegistrosAsistencia()
 
-  useEffect(() => {
-    if (scanning) {
-      const scanner = new Html5QrcodeScanner(
-        'qr-reader',
-        {
-          qrbox: { width: 250, height: 250 },
-          fps: 5,
-        },
-        false
-      )
+  async function handleBuscarEmpleado() {
+    if (!codigoInput.trim()) {
+      setError('Por favor ingresa un código o PIN')
+      return
+    }
 
-      scanner.render(
-        async (decodedText) => {
-          if (scanning) {
-            setScanning(false)
-            setScannedData(decodedText)
+    setLoadingEmpleado(true)
+    setError(null)
+    setEmpleado(null)
 
-            try {
-              const payload = JSON.parse(decodedText)
-              const validation = validateQRPayload(payload)
+    try {
+      const input = codigoInput.trim()
 
-              setValidationResult(validation)
-
-              if (validation.valid && validation.empleadoId) {
-                setLoadingEmpleado(true)
-                // Buscar empleado por ID
-                const { data: empleadoData } = await getEmpleadoById(validation.empleadoId)
-                if (empleadoData) {
-                  setEmpleado(empleadoData)
-                } else {
-                  setValidationResult({
-                    ...validation,
-                    valid: false,
-                    error: 'Empleado no encontrado',
-                  })
-                }
-                setLoadingEmpleado(false)
-              }
-            } catch (error) {
-              // Si no es JSON válido, mostrar error
-              setValidationResult({
-                valid: false,
-                expired: false,
-                error: 'QR inválido. El código debe ser un QR generado por el sistema.',
-              })
-              setLoadingEmpleado(false)
-            }
-
-            scanner.clear()
-            scannerRef.current = null
-          }
-        },
-        (errorMessage) => {
-          // Ignorar errores de escaneo continuo
+      // Intentar buscar por PIN (4 dígitos)
+      if (/^\d{4}$/.test(input)) {
+        const { data, error: pinError } = await getEmpleadoByPIN(input)
+        if (data) {
+          setEmpleado(data)
+          setCodigoInput('') // Limpiar input después de encontrar
+          return
         }
-      )
-
-      scannerRef.current = scanner
-    }
-
-    return () => {
-      if (scannerRef.current) {
-        scannerRef.current.clear()
-        scannerRef.current = null
+        if (pinError) {
+          setError('PIN no encontrado')
+        }
       }
+
+      // Intentar buscar por código QR (si es JSON)
+      try {
+        const payload = JSON.parse(input)
+        const validation = validateQRPayload(payload)
+
+        if (validation.valid && validation.empleadoId) {
+          const { data: empleadoData } = await getEmpleadoById(validation.empleadoId)
+          if (empleadoData) {
+            setEmpleado(empleadoData)
+            setCodigoInput('') // Limpiar input después de encontrar
+            return
+          }
+        }
+        setError(validation.error || 'QR inválido')
+      } catch {
+        // Si no es JSON, intentar buscar directamente por código QR
+        const { data: empleadoByQR } = await getEmpleadoByQR(input)
+        if (empleadoByQR) {
+          setEmpleado(empleadoByQR)
+          setCodigoInput('') // Limpiar input después de encontrar
+          return
+        }
+        setError('Código o PIN no encontrado')
+      }
+    } catch (err: any) {
+      console.error('Error buscando empleado:', err)
+      setError('Error al buscar empleado')
+    } finally {
+      setLoadingEmpleado(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scanning])
+  }
 
   function handleReset() {
-    setScanning(true)
-    setScannedData(null)
-    setValidationResult(null)
+    setCodigoInput('')
     setEmpleado(null)
+    setError(null)
     setLoadingEmpleado(false)
   }
 
@@ -120,7 +101,7 @@ export function ScanQR() {
 
       if (result.success) {
         toast.success(`${TIPOS_EVENTO_LABELS[tipoEvento]} registrada correctamente`)
-        // Resetear después de 1.5 segundos para permitir otro escaneo
+        // Resetear después de 1.5 segundos para permitir otro registro
         setTimeout(() => {
           handleReset()
         }, 1500)
@@ -135,121 +116,157 @@ export function ScanQR() {
     }
   }
 
+  function handleKeyPress(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      handleBuscarEmpleado()
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="font-heading">Escanear QR de Empleado</CardTitle>
-          <CardDescription>Escanea el código QR del empleado para registrar asistencia</CardDescription>
+          <CardTitle className="font-heading">Registro de Asistencia</CardTitle>
+          <CardDescription>
+            Ingresa el PIN de 4 dígitos o escanea el código QR del empleado
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {scanning ? (
-            <div className="space-y-4">
-              <div className="relative w-full max-w-md mx-auto aspect-square bg-black rounded-lg overflow-hidden">
-                <div id="qr-reader" className="w-full h-full" />
-                <div className="absolute inset-0 border-4 border-primary rounded-lg pointer-events-none z-10" />
+          <div className="space-y-4">
+            {/* Input de búsqueda */}
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Ingresa PIN (4 dígitos) o escanea código QR"
+                    value={codigoInput}
+                    onChange={(e) => {
+                      setCodigoInput(e.target.value)
+                      setError(null)
+                      setEmpleado(null)
+                    }}
+                    onKeyPress={handleKeyPress}
+                    className="pl-10 text-lg h-14"
+                    autoFocus
+                    disabled={loadingEmpleado || registrando}
+                  />
+                </div>
+                <Button
+                  onClick={handleBuscarEmpleado}
+                  disabled={loadingEmpleado || registrando || !codigoInput.trim()}
+                  size="lg"
+                  className="h-14 px-6"
+                >
+                  {loadingEmpleado ? 'Buscando...' : 'Buscar'}
+                </Button>
               </div>
-              <p className="text-sm text-center text-muted-foreground">
-                Apunta la cámara al código QR del empleado
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {loadingEmpleado ? (
-                <Loading />
-              ) : validationResult && !validationResult.valid ? (
+              {error && (
                 <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="flex items-center justify-center gap-2 p-4 rounded-lg bg-red-50"
-                >
-                  {validationResult.expired ? (
-                    <XCircle className="h-6 w-6 text-red-500" />
-                  ) : (
-                    <AlertCircle className="h-6 w-6 text-yellow-500" />
-                  )}
-                  <span className="font-medium text-red-500">
-                    {validationResult.error || 'QR Inválido'}
-                  </span>
-                </motion.div>
-              ) : empleado ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="space-y-6"
+                  className="flex items-center gap-2 p-3 rounded-lg bg-red-50"
                 >
-                  <div className="flex flex-col items-center space-y-4">
-                    {empleado.foto_url ? (
-                      <img
-                        src={empleado.foto_url}
-                        alt={empleado.nombre_completo}
-                        className="w-32 h-32 rounded-full object-cover border-4 border-primary"
-                      />
-                    ) : (
-                      <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center border-4 border-primary">
-                        <span className="text-4xl font-bold text-muted-foreground">
-                          {empleado.nombre_completo.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    )}
-                    <div className="text-center">
-                      <h3 className="text-2xl font-bold font-heading">{empleado.nombre_completo}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">Selecciona el tipo de registro</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-3">
-                    <Button
-                      onClick={() => handleRegistrarEvento(TIPOS_EVENTO.ENTRADA)}
-                      disabled={registrando}
-                      className="w-full h-16 text-lg bg-green-600 hover:bg-green-700"
-                      size="lg"
-                    >
-                      <LogIn className="mr-2 h-5 w-5" />
-                      {TIPOS_EVENTO_LABELS[TIPOS_EVENTO.ENTRADA]}
-                    </Button>
-
-                    <Button
-                      onClick={() => handleRegistrarEvento(TIPOS_EVENTO.SALIDA_ALMUERZO)}
-                      disabled={registrando}
-                      variant="outline"
-                      className="w-full h-16 text-lg border-yellow-500 text-yellow-700 hover:bg-yellow-50"
-                      size="lg"
-                    >
-                      <UtensilsCrossed className="mr-2 h-5 w-5" />
-                      {TIPOS_EVENTO_LABELS[TIPOS_EVENTO.SALIDA_ALMUERZO]}
-                    </Button>
-
-                    <Button
-                      onClick={() => handleRegistrarEvento(TIPOS_EVENTO.ENTRADA_ALMUERZO)}
-                      disabled={registrando}
-                      variant="outline"
-                      className="w-full h-16 text-lg border-blue-500 text-blue-700 hover:bg-blue-50"
-                      size="lg"
-                    >
-                      <UtensilsCrossed className="mr-2 h-5 w-5" />
-                      {TIPOS_EVENTO_LABELS[TIPOS_EVENTO.ENTRADA_ALMUERZO]}
-                    </Button>
-
-                    <Button
-                      onClick={() => handleRegistrarEvento(TIPOS_EVENTO.SALIDA)}
-                      disabled={registrando}
-                      variant="destructive"
-                      className="w-full h-16 text-lg"
-                      size="lg"
-                    >
-                      <LogOut className="mr-2 h-5 w-5" />
-                      {TIPOS_EVENTO_LABELS[TIPOS_EVENTO.SALIDA]}
-                    </Button>
-                  </div>
+                  <AlertCircle className="h-5 w-5 text-red-500" />
+                  <span className="text-sm font-medium text-red-500">{error}</span>
                 </motion.div>
-              ) : null}
-
-              <Button onClick={handleReset} variant="outline" className="w-full" disabled={registrando}>
-                {registrando ? 'Registrando...' : 'Escanear otro QR'}
-              </Button>
+              )}
             </div>
-          )}
+
+            {/* Loading */}
+            {loadingEmpleado && (
+              <div className="flex justify-center py-8">
+                <Loading />
+              </div>
+            )}
+
+            {/* Información del empleado y botones */}
+            {empleado && !loadingEmpleado && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-6"
+              >
+                <div className="flex flex-col items-center space-y-4">
+                  {empleado.foto_url ? (
+                    <img
+                      src={empleado.foto_url}
+                      alt={empleado.nombre_completo}
+                      className="w-32 h-32 rounded-full object-cover border-4 border-primary"
+                    />
+                  ) : (
+                    <div className="w-32 h-32 rounded-full bg-muted flex items-center justify-center border-4 border-primary">
+                      <span className="text-4xl font-bold text-muted-foreground">
+                        {empleado.nombre_completo.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  <div className="text-center">
+                    <h3 className="text-2xl font-bold font-heading">{empleado.nombre_completo}</h3>
+                    {empleado.pin && (
+                      <p className="text-sm text-muted-foreground mt-1">PIN: {empleado.pin}</p>
+                    )}
+                    <p className="text-sm text-muted-foreground mt-1">Selecciona el tipo de registro</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3">
+                  <Button
+                    onClick={() => handleRegistrarEvento(TIPOS_EVENTO.ENTRADA)}
+                    disabled={registrando}
+                    className="w-full h-16 text-lg bg-green-600 hover:bg-green-700"
+                    size="lg"
+                  >
+                    <LogIn className="mr-2 h-5 w-5" />
+                    {TIPOS_EVENTO_LABELS[TIPOS_EVENTO.ENTRADA]}
+                  </Button>
+
+                  <Button
+                    onClick={() => handleRegistrarEvento(TIPOS_EVENTO.SALIDA_ALMUERZO)}
+                    disabled={registrando}
+                    variant="outline"
+                    className="w-full h-16 text-lg border-yellow-500 text-yellow-700 hover:bg-yellow-50"
+                    size="lg"
+                  >
+                    <UtensilsCrossed className="mr-2 h-5 w-5" />
+                    {TIPOS_EVENTO_LABELS[TIPOS_EVENTO.SALIDA_ALMUERZO]}
+                  </Button>
+
+                  <Button
+                    onClick={() => handleRegistrarEvento(TIPOS_EVENTO.ENTRADA_ALMUERZO)}
+                    disabled={registrando}
+                    variant="outline"
+                    className="w-full h-16 text-lg border-blue-500 text-blue-700 hover:bg-blue-50"
+                    size="lg"
+                  >
+                    <UtensilsCrossed className="mr-2 h-5 w-5" />
+                    {TIPOS_EVENTO_LABELS[TIPOS_EVENTO.ENTRADA_ALMUERZO]}
+                  </Button>
+
+                  <Button
+                    onClick={() => handleRegistrarEvento(TIPOS_EVENTO.SALIDA)}
+                    disabled={registrando}
+                    variant="destructive"
+                    className="w-full h-16 text-lg"
+                    size="lg"
+                  >
+                    <LogOut className="mr-2 h-5 w-5" />
+                    {TIPOS_EVENTO_LABELS[TIPOS_EVENTO.SALIDA]}
+                  </Button>
+                </div>
+
+                <Button
+                  onClick={handleReset}
+                  variant="outline"
+                  className="w-full"
+                  disabled={registrando}
+                >
+                  {registrando ? 'Registrando...' : 'Buscar otro empleado'}
+                </Button>
+              </motion.div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
