@@ -29,15 +29,15 @@ jobs:
       - name: Build
         run: npm run build
         env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_URL: ${{ https://rhtjjimpeshvgeyuhdbq.supabase.co }}
+          VITE_SUPABASE_ANON_KEY: ${{ eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJodGpqaW1wZXNodmdleXVoZGJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI2MzM1MDUsImV4cCI6MjA3ODIwOTUwNX0.Wm3Cw9RUtewh7IeNPw591O0ahpP4I8vW6HSspzn2Ut8 }}
           VITE_QR_SIGN_SECRET: ${{ secrets.VITE_QR_SIGN_SECRET }}
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v20
         with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-token: ${{ N3UjpJ0kraKtSHcn2SAh1g53 }}
+          vercel-org-id: ${{ krzkrbyos-projects }}
+          vercel-project-id: ${{ prj_8IA5E7a1caDJVjM1VpdUupyl4g8V }}
           vercel-args: '--prod'
 
