@@ -71,7 +71,6 @@ export function ProfileAvatar({ size = 'md', showUpload = false, className }: Pr
 
       // Subir nuevo avatar
       const fileExt = file.name.split('.').pop()
-      const fileName = `${profile.id}/${Date.now()}.${fileExt}`
       const filePath = `${profile.id}/${Date.now()}.${fileExt}`
 
       const { error: uploadError } = await supabase.storage

@@ -1,15 +1,13 @@
-import { useCallback } from 'react'
 import { useAuthStore } from '@/lib/store'
 import { supabase } from '@/lib/supabase'
 import { loadUserProfile } from '@/lib/auth-init'
-import type { User as SupabaseUser } from '@supabase/supabase-js'
 import { toast } from 'sonner'
 
 /**
  * Hook para manejar la autenticación
  */
 export function useAuth() {
-  const { user, profile, loading, setUser, setProfile, setLoading, signOut } = useAuthStore()
+  const { user, profile, loading, setProfile, setLoading, signOut } = useAuthStore()
 
   async function signIn(email: string, password: string) {
     try {

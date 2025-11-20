@@ -1,9 +1,8 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { Loading } from '@/components/Loading'
-import { ROLES, type Role } from '@/lib/constants'
+import { type Role } from '@/lib/constants'
 import { useAuthStore } from '@/lib/store'
-import { useEffect, useState } from 'react'
 
 interface PrivateRouteProps {
   children: React.ReactNode

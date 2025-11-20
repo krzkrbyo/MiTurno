@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Calendar, Users, Clock, UtensilsCrossed } from 'lucide-react'
+import { Users, Clock, UtensilsCrossed } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { useRegistrosAsistencia } from '@/features/empleados/hooks/useRegistrosAsistencia'
-import { useEmpleados } from '@/features/empleados/hooks/useEmpleados'
 import { Loading } from '@/components/Loading'
 import { TIPOS_EVENTO_LABELS, TIPOS_EVENTO_COLORS } from '@/lib/constants'
 import { format } from 'date-fns'
@@ -17,8 +16,7 @@ type RegistroAsistencia = Database['public']['Tables']['registros_asistencia']['
 }
 
 export function EstadisticasPage() {
-  const { registros, loading, loadRegistros, getEstadisticasDia } = useRegistrosAsistencia()
-  const { empleados } = useEmpleados()
+  const { loading, getEstadisticasDia } = useRegistrosAsistencia()
   const [fecha, setFecha] = useState(new Date())
   const [estadisticas, setEstadisticas] = useState<{
     totalRegistros: number
