@@ -1,8 +1,9 @@
-import { EstadoTurno } from '@/lib/constants'
-
 /**
  * Tipo de turno con relaciones expandidas
+ * NOTA: Este tipo es del sistema antiguo y se mantiene por compatibilidad
  */
+export type EstadoTurno = 'pendiente' | 'en_cola' | 'atendiendo' | 'completado' | 'cancelado'
+
 export interface Turno {
   id: string
   codigo: string

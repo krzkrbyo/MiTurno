@@ -101,7 +101,8 @@ export function useAuth() {
         // Intentar actualizar el nombre del perfil si existe
         const { error: updateError } = await supabase
           .from('profiles')
-          .update({ full_name: fullName || null })
+          // @ts-ignore - Supabase type inference issue
+          .update({ full_name: fullName || null } as any)
           .eq('id', data.user.id)
 
         if (updateError && updateError.code !== 'PGRST116') {

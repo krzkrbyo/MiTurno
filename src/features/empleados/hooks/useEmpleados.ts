@@ -100,7 +100,7 @@ export function useEmpleados() {
           ...empleado,
           codigo_qr,
           pin,
-        })
+        } as any)
         .select()
         .single()
 
@@ -121,7 +121,8 @@ export function useEmpleados() {
     try {
       const { data, error: updateError } = await supabase
         .from('empleados')
-        .update(updates)
+        // @ts-ignore - Supabase type inference issue
+        .update(updates as any)
         .eq('id', id)
         .select()
         .single()

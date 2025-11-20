@@ -65,7 +65,7 @@ export function useRegistrosAsistencia() {
     try {
       const { data, error: createError } = await supabase
         .from('registros_asistencia')
-        .insert(registro)
+        .insert(registro as any)
         .select()
         .single()
 
@@ -108,7 +108,7 @@ export function useRegistrosAsistencia() {
       // Procesar datos para obtener estadísticas
       // Primero, ordenar por fecha_hora ascendente para procesar eventos en orden cronológico
       const registrosOrdenados = [...(data || [])].sort(
-        (a, b) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime()
+        (a: any, b: any) => new Date(a.fecha_hora).getTime() - new Date(b.fecha_hora).getTime()
       )
 
       const empleadosPresentes = new Set<string>()

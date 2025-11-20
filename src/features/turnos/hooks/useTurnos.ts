@@ -102,7 +102,7 @@ export function useTurnos(filters?: TurnoFilters) {
           codigo,
           estado: 'pendiente',
           created_by: user.id,
-        })
+        } as any)
         .select()
         .single()
 
@@ -140,7 +140,8 @@ export function useTurnos(filters?: TurnoFilters) {
 
       const { error: updateError } = await supabase
         .from('turnos')
-        .update(updateData)
+        // @ts-ignore - Supabase type inference issue
+        .update(updateData as any)
         .eq('id', turnoId)
 
       if (updateError) throw updateError

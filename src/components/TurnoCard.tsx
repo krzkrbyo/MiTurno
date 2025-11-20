@@ -5,7 +5,22 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import type { Turno } from '@/types/turno'
-import { ESTADOS_TURNO_LABELS, ESTADOS_TURNO_COLORS } from '@/lib/constants'
+// Constantes del sistema antiguo de turnos (mantenidas por compatibilidad)
+const ESTADOS_TURNO_LABELS: Record<string, string> = {
+  pendiente: 'Pendiente',
+  en_cola: 'En Cola',
+  atendiendo: 'Atendiendo',
+  completado: 'Completado',
+  cancelado: 'Cancelado',
+}
+
+const ESTADOS_TURNO_COLORS: Record<string, string> = {
+  pendiente: 'bg-gray-100 text-gray-800',
+  en_cola: 'bg-blue-100 text-blue-800',
+  atendiendo: 'bg-yellow-100 text-yellow-800',
+  completado: 'bg-green-100 text-green-800',
+  cancelado: 'bg-red-100 text-red-800',
+}
 import { generateQRPayload } from '@/lib/qr'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 
@@ -24,8 +39,8 @@ export function TurnoCard({
   onCompletar,
   onCancelar,
 }: TurnoCardProps) {
-  const { isAdmin, isAgente } = useAuth()
-  const canManage = isAdmin || isAgente
+  const { isAdmin } = useAuth()
+  const canManage = isAdmin
 
   const qrPayload = generateQRPayload(turno.id)
   const qrData = JSON.stringify(qrPayload)

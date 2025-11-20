@@ -26,7 +26,7 @@ export const useAuthStore = create<AuthState>()(
       loading: true, // Iniciar con loading true para verificar sesión
       initialized: false,
       setUser: (user) => set({ user }),
-      setProfile: (profile) => set({ profile }),
+      setProfile: (profile: Profile | null) => set({ profile }),
       setLoading: (loading) => set({ loading }),
       setInitialized: (initialized) => set({ initialized }),
       signOut: async () => {

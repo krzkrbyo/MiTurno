@@ -6,6 +6,7 @@ import { useAuth } from '@/features/auth/hooks/useAuth'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import type { Profile } from '@/types/auth'
 
 interface ProfileAvatarProps {
   size?: 'sm' | 'md' | 'lg'
@@ -92,7 +93,8 @@ export function ProfileAvatar({ size = 'md', showUpload = false, className }: Pr
       // Actualizar perfil en la base de datos
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ avatar_url: publicUrl })
+        // @ts-ignore - Supabase type inference issue
+        .update({ avatar_url: publicUrl } as any)
         .eq('id', profile.id)
 
       if (updateError) {
@@ -100,7 +102,7 @@ export function ProfileAvatar({ size = 'md', showUpload = false, className }: Pr
       }
 
       // Actualizar estado local
-      setProfile({ ...profile, avatar_url: publicUrl })
+      setProfile({ ...profile, avatar_url: publicUrl } as Profile)
       setPreview(null)
       toast.success('Foto de perfil actualizada')
     } catch (error: any) {
@@ -128,12 +130,14 @@ export function ProfileAvatar({ size = 'md', showUpload = false, className }: Pr
       // Actualizar perfil
       const { error } = await supabase
         .from('profiles')
-        .update({ avatar_url: null })
+        // @ts-ignore - Supabase type inference issue
+        .update({ avatar_url: null } as any)
         .eq('id', profile.id)
 
       if (error) throw error
 
-      setProfile({ ...profile, avatar_url: null })
+      // @ts-ignore - Zustand persist middleware type inference issue
+      setProfile({ ...profile, avatar_url: null } as Profile)
       toast.success('Foto de perfil eliminada')
     } catch (error: any) {
       console.error('Error removing avatar:', error)

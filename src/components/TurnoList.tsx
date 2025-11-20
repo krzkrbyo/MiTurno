@@ -7,7 +7,16 @@ import { EmptyState } from './EmptyState'
 import { Loading } from './Loading'
 import { FileQuestion } from 'lucide-react'
 import type { Turno, TurnoFilters } from '@/types/turno'
-import { ESTADOS_TURNO_LABELS, type EstadoTurno } from '@/lib/constants'
+// Constantes del sistema antiguo de turnos (mantenidas por compatibilidad)
+const ESTADOS_TURNO_LABELS: Record<string, string> = {
+  pendiente: 'Pendiente',
+  en_cola: 'En Cola',
+  atendiendo: 'Atendiendo',
+  completado: 'Completado',
+  cancelado: 'Cancelado',
+}
+
+type EstadoTurno = 'pendiente' | 'en_cola' | 'atendiendo' | 'completado' | 'cancelado'
 import { useSucursales } from '@/features/turnos/hooks/useSucursales'
 import { useTurnos } from '@/features/turnos/hooks/useTurnos'
 
@@ -99,7 +108,7 @@ export function TurnoList({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos los estados</SelectItem>
-            {Object.entries(ESTADOS_TURNO_LABELS).map(([value, label]) => (
+            {Object.entries(ESTADOS_TURNO_LABELS).map(([value, label]: [string, string]) => (
               <SelectItem key={value} value={value}>
                 {label}
               </SelectItem>
