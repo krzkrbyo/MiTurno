@@ -101,7 +101,7 @@ export function initializeAuth() {
   initialized = true
 
   console.log('initializeAuth: Starting initialization...')
-  const { setLoading, setInitialized, user, profile } = useAuthStore.getState()
+  const { setLoading, setInitialized } = useAuthStore.getState()
   
   // Verificar sesión inicial
   const checkSession = async () => {
@@ -131,7 +131,6 @@ export function initializeAuth() {
           console.log('initializeAuth: Loading profile...')
           setLoading(true)
           const loaded = await loadUserProfile(session.user)
-          setLoading(false)
           
           if (!loaded) {
             console.error('initializeAuth: Failed to load profile')
@@ -144,17 +143,21 @@ export function initializeAuth() {
       } else {
         console.log('initializeAuth: No session found')
         // Limpiar datos obsoletos
-        if (user || profile) {
+        const currentState = useAuthStore.getState()
+        if (currentState.user || currentState.profile) {
           console.log('initializeAuth: Clearing stale data')
           useAuthStore.getState().setUser(null)
           useAuthStore.getState().setProfile(null)
         }
       }
       
+      // SIEMPRE establecer loading en false e initialized en true al final
       setLoading(false)
       setInitialized(true)
+      console.log('initializeAuth: Initialization complete')
     } catch (error) {
       console.error('initializeAuth: Exception in checkSession:', error)
+      // Asegurar que siempre se establezcan estos valores incluso en caso de error
       setLoading(false)
       setInitialized(true)
     }

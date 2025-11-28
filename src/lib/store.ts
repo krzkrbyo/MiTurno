@@ -49,9 +49,17 @@ export const useAuthStore = create<AuthState>()(
           hasProfile: !!state?.profile,
         })
         // El estado se rehidrata, pero loading e initialized se resetean
+        // Solo si hay datos en localStorage, marcar como no inicializado para verificar
         if (state) {
-          state.loading = true
-          state.initialized = false
+          // Si hay datos en localStorage, necesitamos verificar la sesión
+          if (state.user || state.profile) {
+            state.loading = true
+            state.initialized = false
+          } else {
+            // Si no hay datos, podemos marcar como inicializado inmediatamente
+            state.loading = false
+            state.initialized = true
+          }
         }
       },
     }

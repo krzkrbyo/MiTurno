@@ -34,7 +34,6 @@ const COLORS = ['#10b981', '#ef4444', '#f59e0b', '#3b82f6']
 
 export function EstadisticasPage() {
   const {
-    loading,
     getEstadisticasDia,
     getAsistenciaPorDia,
     getDistribucionEventos,
@@ -112,7 +111,8 @@ export function EstadisticasPage() {
     setFecha(newFecha)
   }
 
-  if (loading || loadingStats) {
+  // Solo mostrar loading si está cargando las estadísticas, no el auth
+  if (loadingStats) {
     return <Loading />
   }
 
