@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Edit, Trash2, QrCode, User, Printer } from 'lucide-react'
+import { Plus, Edit, Trash2, QrCode, User, Printer, Database as DatabaseIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -12,12 +12,13 @@ import { QRCodeSVG } from 'qrcode.react'
 import { generateQRPayload } from '@/lib/qr'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
+import { populateSampleData } from '@/lib/sample-data'
 import type { Database } from '@/types/db'
 
 type Empleado = Database['public']['Tables']['empleados']['Row']
 
 export function EmpleadosPage() {
-  const { empleados, loading, createEmpleado, updateEmpleado, deleteEmpleado } = useEmpleados()
+  const { empleados, loading, createEmpleado, updateEmpleado, deleteEmpleado, loadEmpleados } = useEmpleados()
   const { user } = useAuth()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [editingEmpleado, setEditingEmpleado] = useState<Empleado | null>(null)
@@ -29,6 +30,7 @@ export function EmpleadosPage() {
   const [qrPreview, setQrPreview] = useState<string | null>(null)
   const [newEmpleadoId, setNewEmpleadoId] = useState<string | null>(null)
   const [qrDialogOpen, setQrDialogOpen] = useState(false)
+  const [loadingSample, setLoadingSample] = useState(false)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -140,6 +142,30 @@ export function EmpleadosPage() {
     await updateEmpleado(empleado.id, { activo: !empleado.activo })
   }
 
+  const handlePopulateSampleData = async () => {
+    if (!user?.id) {
+      toast.error('Usuario no autenticado')
+      return
+    }
+
+    if (!confirm('¿Estás seguro? Esto creará 15 empleados de ejemplo y registros de asistencia para los últimos 7 días. Si ya existen empleados, se cancelará la operación.')) {
+      return
+    }
+
+    setLoadingSample(true)
+    try {
+      const result = await populateSampleData(user.id, 7)
+      if (result.success) {
+        await loadEmpleados()
+      }
+    } catch (error: any) {
+      console.error('Error populating sample data:', error)
+      toast.error('Error al poblar datos de ejemplo')
+    } finally {
+      setLoadingSample(false)
+    }
+  }
+
   if (loading) {
     return <Loading />
   }
@@ -151,17 +177,26 @@ export function EmpleadosPage() {
           <h1 className="text-3xl font-bold font-heading mb-2">Empleados</h1>
           <p className="text-muted-foreground">Gestiona los empleados y sus códigos QR</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => {
-              setEditingEmpleado(null)
-              setFormData({ nombre_completo: '', foto: null })
-            }}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nuevo Empleado
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={handlePopulateSampleData}
+            disabled={loadingSample}
+          >
+            <DatabaseIcon className="mr-2 h-4 w-4" />
+            {loadingSample ? 'Cargando...' : 'Datos de Ejemplo'}
+          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => {
+                setEditingEmpleado(null)
+                setFormData({ nombre_completo: '', foto: null })
+              }}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nuevo Empleado
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>
                 {editingEmpleado ? 'Editar Empleado' : 'Nuevo Empleado'}
@@ -201,7 +236,8 @@ export function EmpleadosPage() {
               </div>
             </form>
           </DialogContent>
-        </Dialog>
+          </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
