@@ -101,7 +101,7 @@ export function useAuth() {
         // Intentar actualizar el nombre del perfil si existe
         const { error: updateError } = await supabase
           .from('profiles')
-          // @ts-ignore - Supabase type inference issue
+          // @ts-expect-error - Supabase type inference issue
           .update({ full_name: fullName || null } as any)
           .eq('id', data.user.id)
 

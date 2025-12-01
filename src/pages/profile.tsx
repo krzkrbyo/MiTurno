@@ -51,13 +51,13 @@ export function ProfilePage() {
 
       const { error } = await supabase
         .from('profiles')
-        // @ts-ignore - Supabase type inference issue
+        // @ts-expect-error - Supabase type inference issue
         .update({ full_name: data.full_name } as any)
         .eq('id', profile.id)
 
       if (error) throw error
 
-      // @ts-ignore - Zustand persist middleware type inference issue
+      // @ts-expect-error - Zustand persist middleware type inference issue
       setProfile({ ...profile, full_name: data.full_name } as Profile)
       toast.success('Perfil actualizado correctamente')
     } catch (error: any) {

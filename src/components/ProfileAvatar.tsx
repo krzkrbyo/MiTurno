@@ -93,7 +93,7 @@ export function ProfileAvatar({ size = 'md', showUpload = false, className }: Pr
       // Actualizar perfil en la base de datos
       const { error: updateError } = await supabase
         .from('profiles')
-        // @ts-ignore - Supabase type inference issue
+        // @ts-expect-error - Supabase type inference issue
         .update({ avatar_url: publicUrl } as any)
         .eq('id', profile.id)
 
@@ -130,13 +130,13 @@ export function ProfileAvatar({ size = 'md', showUpload = false, className }: Pr
       // Actualizar perfil
       const { error } = await supabase
         .from('profiles')
-        // @ts-ignore - Supabase type inference issue
+        // @ts-expect-error - Supabase type inference issue
         .update({ avatar_url: null } as any)
         .eq('id', profile.id)
 
       if (error) throw error
 
-      // @ts-ignore - Zustand persist middleware type inference issue
+      // @ts-expect-error - Zustand persist middleware type inference issue
       setProfile({ ...profile, avatar_url: null } as Profile)
       toast.success('Foto de perfil eliminada')
     } catch (error: any) {

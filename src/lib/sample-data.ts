@@ -68,7 +68,7 @@ export async function createSampleEmployees(userId: string): Promise<{ success: 
     for (let i = 0; i < empleados.length; i += batchSize) {
       const batch = empleados.slice(i, i + batchSize)
       
-      // @ts-ignore - Supabase type inference issue
+      // @ts-expect-error - Supabase type inference issue
       const { error } = await supabase.from('empleados').insert(batch as any)
 
       if (error) {
@@ -178,7 +178,7 @@ export async function createSampleAttendanceRecords(days: number = 7): Promise<{
     for (let i = 0; i < registros.length; i += batchSize) {
       const batch = registros.slice(i, i + batchSize)
       
-      // @ts-ignore - Supabase type inference issue
+      // @ts-expect-error - Supabase type inference issue
       const { error } = await supabase.from('registros_asistencia').insert(batch as any)
 
       if (error) {

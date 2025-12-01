@@ -140,7 +140,7 @@ export function useTurnos(filters?: TurnoFilters) {
 
       const { error: updateError } = await supabase
         .from('turnos')
-        // @ts-ignore - Supabase type inference issue
+        // @ts-expect-error - Supabase type inference issue
         .update(updateData as any)
         .eq('id', turnoId)
 

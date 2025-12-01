@@ -121,7 +121,7 @@ export function useEmpleados() {
     try {
       const { data, error: updateError } = await supabase
         .from('empleados')
-        // @ts-ignore - Supabase type inference issue
+        // @ts-expect-error - Supabase type inference issue
         .update(updates as any)
         .eq('id', id)
         .select()
