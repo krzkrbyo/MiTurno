@@ -136,7 +136,6 @@ export function ProfileAvatar({ size = 'md', showUpload = false, className }: Pr
 
       if (error) throw error
 
-      // @ts-expect-error - Zustand persist middleware type inference issue
       setProfile({ ...profile, avatar_url: null } as Profile)
       toast.success('Foto de perfil eliminada')
     } catch (error: any) {

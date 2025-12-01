@@ -57,7 +57,6 @@ export function ProfilePage() {
 
       if (error) throw error
 
-      // @ts-expect-error - Zustand persist middleware type inference issue
       setProfile({ ...profile, full_name: data.full_name } as Profile)
       toast.success('Perfil actualizado correctamente')
     } catch (error: any) {
