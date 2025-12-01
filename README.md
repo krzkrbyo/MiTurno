@@ -91,3 +91,10 @@ La aplicación estará en `http://localhost:5173`
 - Tailwind CSS + shadcn/ui
 - Zustand (State Management)
 - React Router
+
+## 🔄 CI/CD
+
+El proyecto está configurado con GitHub Actions para:
+- ✅ Linting automático en cada push
+- ✅ Build y despliegue automático a Vercel
+- ✅ Verificación de tipos TypeScript
