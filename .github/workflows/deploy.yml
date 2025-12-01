@@ -1,4 +1,4 @@
-name: Deploy to Vercel
+name: CI/CD Pipeline
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  lint-and-build:
     runs-on: ubuntu-latest
     
     steps:
@@ -33,10 +33,6 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
           VITE_QR_SIGN_SECRET: ${{ secrets.VITE_QR_SIGN_SECRET }}
 
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v20
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
+      # Nota: El despliegue a Vercel se hace automáticamente mediante la integración de GitHub
+      # Configura la integración en: Vercel Dashboard → Settings → Git → Connect GitHub
+      # Esto permite despliegues automáticos sin necesidad de secrets adicionales
