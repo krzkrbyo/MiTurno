@@ -9,7 +9,7 @@ import { useEmpleados } from '@/features/empleados/hooks/useEmpleados'
 import { useAuth } from '@/features/auth/hooks/useAuth'
 import { Loading } from '@/components/Loading'
 import { QRCodeSVG } from 'qrcode.react'
-import { generateQRPayload } from '@/lib/qr'
+import { generateQRCode } from '@/lib/qr'
 import { supabase } from '@/lib/supabase'
 import { toast } from 'sonner'
 import { populateSampleData } from '@/lib/sample-data'
@@ -108,10 +108,12 @@ export function EmpleadosPage() {
             await updateEmpleado(empleadoId, { foto_url: fotoUrl })
           }
 
-          // Generar QR con el ID del empleado
-          const qrPayload = generateQRPayload(empleadoId)
-          setQrPreview(JSON.stringify(qrPayload))
-          setQrDialogOpen(true) // Mostrar diálogo de QR
+          // Generar QR con el PIN del empleado
+          if (empleadoData.pin) {
+            const qrCode = generateQRCode(empleadoData.pin)
+            setQrPreview(qrCode)
+            setQrDialogOpen(true) // Mostrar diálogo de QR
+          }
           // No cerrar el diálogo de creación, solo resetear el formulario
           setFormData({ nombre_completo: '', foto: null })
         }
@@ -339,7 +341,7 @@ export function EmpleadosPage() {
                           <div className="flex flex-col items-center space-y-2 pt-2">
                             <div className="bg-white p-3 rounded-lg border-2 border-gray-200">
                               <QRCodeSVG 
-                                value={JSON.stringify(generateQRPayload(empleado.id))} 
+                                value={empleado.pin ? generateQRCode(empleado.pin) : ''} 
                                 size={180}
                                 level="M"
                               />

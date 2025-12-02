@@ -4,7 +4,6 @@ import { AlertCircle, LogIn, LogOut, UtensilsCrossed, Search } from 'lucide-reac
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { validateQRPayload } from '@/lib/qr'
 import { useEmpleados } from '@/features/empleados/hooks/useEmpleados'
 import { useRegistrosAsistencia } from '@/features/empleados/hooks/useRegistrosAsistencia'
 import { Loading } from './Loading'
@@ -20,7 +19,7 @@ export function ScanQR() {
   const [loadingEmpleado, setLoadingEmpleado] = useState(false)
   const [registrando, setRegistrando] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { getEmpleadoByQR, getEmpleadoById, getEmpleadoByPIN } = useEmpleados()
+  const { getEmpleadoByQR, getEmpleadoByPIN } = useEmpleados()
   const { createRegistro } = useRegistrosAsistencia()
 
   async function handleBuscarEmpleado() {
@@ -36,7 +35,7 @@ export function ScanQR() {
     try {
       const input = codigoInput.trim()
 
-      // Intentar buscar por PIN (4 dígitos)
+      // Si el input es un PIN de 4 dígitos (del QR o ingresado manualmente), buscar por PIN
       if (/^\d{4}$/.test(input)) {
         const { data, error: pinError } = await getEmpleadoByPIN(input)
         if (data) {
@@ -46,33 +45,19 @@ export function ScanQR() {
         }
         if (pinError) {
           setError('PIN no encontrado')
-        }
-      }
-
-      // Intentar buscar por código QR (si es JSON)
-      try {
-        const payload = JSON.parse(input)
-        const validation = validateQRPayload(payload)
-
-        if (validation.valid && validation.empleadoId) {
-          const { data: empleadoData } = await getEmpleadoById(validation.empleadoId)
-          if (empleadoData) {
-            setEmpleado(empleadoData)
-            setCodigoInput('') // Limpiar input después de encontrar
-            return
-          }
-        }
-        setError(validation.error || 'QR inválido')
-      } catch {
-        // Si no es JSON, intentar buscar directamente por código QR
-        const { data: empleadoByQR } = await getEmpleadoByQR(input)
-        if (empleadoByQR) {
-          setEmpleado(empleadoByQR)
-          setCodigoInput('') // Limpiar input después de encontrar
           return
         }
-        setError('Código o PIN no encontrado')
       }
+
+      // Si no es un PIN, intentar buscar por código QR (legacy - para compatibilidad)
+      const { data: empleadoByQR } = await getEmpleadoByQR(input)
+      if (empleadoByQR) {
+        setEmpleado(empleadoByQR)
+        setCodigoInput('') // Limpiar input después de encontrar
+        return
+      }
+      
+      setError('Código o PIN no encontrado')
     } catch (err: any) {
       console.error('Error buscando empleado:', err)
       setError('Error al buscar empleado')

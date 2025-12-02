@@ -23,18 +23,29 @@ export function validateQRSignature(
 }
 
 /**
- * Genera el payload del QR con firma y expiración para empleados
+ * Genera el código QR para empleados (solo contiene el PIN de 4 dígitos)
  */
-export function generateQRPayload(empleadoId: string): {
-  empleado_id: string
+export function generateQRCode(pin: string): string {
+  if (!pin || !/^\d{4}$/.test(pin)) {
+    throw new Error('PIN debe ser de 4 dígitos')
+  }
+  return pin
+}
+
+/**
+ * Genera el payload del QR con firma y expiración para turnos
+ * (mantenido para compatibilidad con el sistema de turnos)
+ */
+export function generateQRPayload(turnoId: string): {
+  turno_id: string
   exp_ts: number
   firma: string
 } {
   const expTimestamp = Math.floor(Date.now() / 1000) + QR_EXPIRATION_SECONDS
-  const firma = generateQRSignature(empleadoId, expTimestamp)
+  const firma = generateQRSignature(turnoId, expTimestamp)
 
   return {
-    empleado_id: empleadoId,
+    turno_id: turnoId,
     exp_ts: expTimestamp,
     firma,
   }
